@@ -45,6 +45,41 @@
              (tag (nm :heading) "Reminder")
              (tag (nm :body) "Don't forget me this weekend!")))
 
+(defn path [& values]
+   values)
+
+(defn get-content [expr]
+  (rest (rest expr)))
+
+(defn tag-name [expr]
+  (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name))
+
+(defn apply-path [expr path]
+   (reduce
+    (fn [acc name]
+      (first  (map get-content
+        (filter (fn [elem] (= name (tag-name elem))) acc))
+      ))
+    (list expr)
+    path))
+
+(tag (nm :html) (tag (nm :body)
+                (tag (nm :div) "First layer" (tag (nm :span) "Text in first layer"))
+                (tag (nm :div) "Second layer")
+                (tag (nm :div) "Third layer"
+                     (tag (nm :span) (a (nm :class) "text") "Text 1 in third layer")
+                     (tag (nm :span) (a (nm :class) "text") "Text 2 in third layer")
+                     (tag (nm :span) "Text 3 in third layer"))
+                (tag (nm :div) "Fourth layer")))
+
+;ok
+(path :html :body)
+;not ok
+(path :html :body :div)
+
+
+
+
 
 ; Dnf
 (defn conjj [expr & rest]
