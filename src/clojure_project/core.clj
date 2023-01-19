@@ -22,6 +22,12 @@
 (defn tag [name & values]
   (concat (list ::tag name) values))
 
+(defn tag? [expr]
+  (= (first expr) ::tag))
+
+(defn nm? [expr]
+  (= (second expr) ::name))
+
 (defn a [name value]
   (list ::attribute name value))
 

@@ -1,0 +1,7 @@
+(tag
+    (nm :note)
+    (sequence
+        ((tag (nm :to) string)
+         (tag (nm :from) string)
+         (tag (nm :heading) string)
+         (tag (nm :body) string))))

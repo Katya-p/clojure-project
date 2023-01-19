@@ -1,0 +1,6 @@
+(tag
+    (nm :note)
+    ((tag (nm :to) "Tove ")
+     (tag (nm :from) "Jani")
+     (tag (nm :heading) "Reminder")
+     (tag (nm :body) "Don't forget me this weekend!")))
