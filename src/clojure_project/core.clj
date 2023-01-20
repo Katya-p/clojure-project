@@ -22,25 +22,21 @@
 (defn tag [name & values]
   (concat (list ::tag name) values))
 
-(defn a [name value]
-  (list ::attribute name value))
-
 (defmulti to-str (fn [expr] (get-expr-type expr)))
 (defmethod to-str ::value [expr] (str expr))
 (defmethod to-str ::name [expr] (str (expr-value expr ::name)))
 (defmethod to-str ::tag [expr] (reduce (fn [acc val] (str acc " " (to-str val))) "" (args expr)))
-(defmethod to-str ::attribute [expr] (reduce (fn [acc val] (str acc " " (to-str val))) "" (args expr)))
 
 ; Expression example
 (tag (nm :note)
-     (tag (nm :to) (a (nm :id) "555") "Tove ")
+     (tag (nm :to) "Tove ")
      (tag (nm :from) "Jani")
      (tag (nm :heading) "Reminder")
      (tag (nm :body) "Don't forget me this weekend!"))
 
 ; To str example
 (to-str (tag (nm :note)
-             (tag (nm :to) (a (nm :id) "555") "Tove ")
+             (tag (nm :to) "Tove ")
              (tag (nm :from) "Jani")
              (tag (nm :heading) "Reminder")
              (tag (nm :body) "Don't forget me this weekend!")))
@@ -48,62 +44,40 @@
 (defn path [& values]
    values)
 
-(defn get-content [expr]
-  (rest (rest expr)))
+(defn tag-content [expr]
+  (if (legal-expr? expr ::tag)
+    (rest (rest expr))
+    (throw (IllegalArgumentException. "Bad type"))))
 
 (defn tag-name [expr]
-  (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name))
+  (if (legal-expr? expr ::tag)
+    (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name)
+    (throw (IllegalArgumentException. "Bad type"))))
 
 (defn apply-path [expr path]
-   (reduce
-    (fn [acc name]
-      (first  (map get-content
-        (filter (fn [elem] (= name (tag-name elem))) acc))
-      ))
-    (list expr)
-    path))
+  (if (legal-expr? expr ::tag)
+    (reduce
+      (fn [acc name]
+        (reduce (fn [acc val] (concat acc (tag-content val)))
+          (list)
+          (filter (fn [elem] (= name (tag-name elem))) acc)
+        )
+      )
+      (list expr)
+      path)
+    (throw (IllegalArgumentException. "Bad expression"))))
+
 
 (tag (nm :html) (tag (nm :body)
                 (tag (nm :div) "First layer" (tag (nm :span) "Text in first layer"))
                 (tag (nm :div) "Second layer")
                 (tag (nm :div) "Third layer"
-                     (tag (nm :span) (a (nm :class) "text") "Text 1 in third layer")
-                     (tag (nm :span) (a (nm :class) "text") "Text 2 in third layer")
+                     (tag (nm :span) "Text 1 in third layer")
+                     (tag (nm :span) "Text 2 in third layer")
                      (tag (nm :span) "Text 3 in third layer"))
                 (tag (nm :div) "Fourth layer")))
 
 ;ok
 (path :html :body)
-;not ok
+;ok
 (path :html :body :div)
-
-
-
-
-
-; Dnf
-(defn conjj [expr & rest]
-  (cons ::and (cons expr rest)))
-
-(defn disjj [expr & rest]
-  (cons ::or (cons expr rest)))
-
-(defn neg [expr]
-  (list ::not expr))
-
-(defn impl [expr1 expr2]
-  (list ::impl expr1 expr2))
-
-(defmulti evaluate (fn [expr _] (get-expr-type expr)))
-(defmethod evaluate ::const [expr _] (expr-value expr ::const))
-(defmethod evaluate ::var [expr values] (get values (expr-value expr ::var)))
-(defmethod evaluate ::not [expr values] (not (evaluate (first (args expr)) values)))
-(defmethod evaluate ::and [expr values] (reduce (fn [acc val] (and acc (evaluate val values))) true (args expr)))
-(defmethod evaluate ::or [expr values] (reduce (fn [acc val] (or acc (evaluate val values))) false (args expr)))
-
-(defn evaluate-dnf [expr values]
-  (evaluate expr values))
-
-
-
-
