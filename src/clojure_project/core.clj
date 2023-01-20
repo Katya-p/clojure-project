@@ -52,7 +52,7 @@
 (defn tag-name [expr]
   (if (legal-expr? expr ::tag)
     (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name)
-    (throw (IllegalArgumentException. "Bad type"))))
+    ""))
 
 (defn apply-path [expr path]
   (if (legal-expr? expr ::tag)
@@ -60,9 +60,7 @@
       (fn [acc name]
         (reduce (fn [acc val] (concat acc (tag-content val)))
           (list)
-          (filter (fn [elem] (= name (tag-name elem))) acc)
-        )
-      )
+          (filter (fn [elem] (= name (tag-name elem))) acc)))
       (list expr)
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
@@ -79,5 +77,5 @@
 
 ;ok
 (path :html :body)
-;ok
 (path :html :body :div)
+(path :html :body :div :span)
