@@ -6,21 +6,21 @@
 
 
 
-(declare is-value)
+;(declare is-value)
+;
+;(defn check-correctness
+;  [expr]
+;  (if (and (seq? expr) (= 3 (count expr)))
+;    true
+;    false))
+;
+;(defn is-value
+;  [data]
+;  (if (or (string? data) (number? data))
+;    true
+;    (check-correctness data)))
 
-(defn check-correctness
-  [expr]
-  (if (and (seq? expr) (= 3 (count expr)))
-    true
-    false))
-
-(defn is-value
-  [data]
-  (if (or (string? data) (number? data))
-    true
-    (check-correctness data)))
-
-
+;читаем данные из файла
 (defn read-forms
   [file]
   (let [rdr (-> file io/file io/reader PushbackReader.)
@@ -61,6 +61,7 @@
        (validate (rest tree) (second schema))))
 
 (defn sequencee
+  "Эта последовательность дает возможность проверять данные строго по схеме"
   [tree schema]
   (every? true? (map
                   (partial apply validate)
@@ -75,6 +76,8 @@
   (number? (first tree)))
 
 (defn xmlsequence
+  "Эта последовательность дает возможность проверять данные по схеме,
+  несмотря на количество повторений или порядок внутренних тегов"
   [tree schema]
   (every? true? (map
                   (fn [node]
@@ -145,3 +148,41 @@
 
 
 (println (validate ["note" "heh"] [tagg "note" [stringg]]))
+
+;Пример
+
+;Пример с-выражения
+(def example1
+  ["name-out"
+   ["id" 1111]
+   ["name-in1" "data1"]
+   ["name-in2" "data2"]
+   ["name-in3" "data3"]
+   ["name-in4" "data4"]
+   ])
+;Пример схемы c нестрогой последовательностью
+(def example-scheme1
+  [tagg "name-out"
+   [xmlsequence
+    [tagg "id" [numberr]]
+    [tagg "name-in1" [stringg]]
+    [tagg "name-in2" [stringg]]
+    [tagg "name-in4" [stringg]]
+    [tagg "name-in3" [stringg]]
+    ]
+   ])
+
+;Пример схемы cо строгой последовательностью
+(def example-scheme2
+  [tagg "name-out"
+   [sequencee
+    [tagg "id" [numberr]]
+    [tagg "name-in1" [stringg]]
+    [tagg "name-in2" [stringg]]
+    [tagg "name-in4" [stringg]]
+    [tagg "name-in3" [stringg]]
+    ]
+   ])
+
+(validate example1 example-scheme1)                         ;; true
+(validate example1 example-scheme2)                         ;; false
