@@ -186,3 +186,8 @@
 
 (validate example1 example-scheme1)                         ;; true
 (validate example1 example-scheme2)                         ;; false
+
+
+(defn create-tree
+  [parent child]
+  [(name parent) (name child)])
