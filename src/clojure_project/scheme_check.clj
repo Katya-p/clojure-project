@@ -8,7 +8,8 @@
 
 (declare is-value)
 
-(defn check-correctness [expr]
+(defn check-correctness
+  [expr]
   (if (and (seq? expr) (= 3 (count expr)))
     true
     false))
@@ -20,7 +21,8 @@
     (check-correctness data)))
 
 
-(defn read-forms [file]
+(defn read-forms
+  [file]
   (let [rdr (-> file io/file io/reader PushbackReader.)
         sentinel (Object.)]
     (loop [forms []]
@@ -35,10 +37,7 @@
                    (read-forms path)
                    (catch Exception e (list))
                    (finally))]
-    (first (filter
-             (fn [data]
-               (check-correctness data))
-             data-seq))))
+    (first data-seq)))
 
 (defn -main []
   (let [path-to-file1 "test/test-data/data1.txt"]
@@ -46,33 +45,103 @@
 
 
 
-;Пример с-выражения
-(def example (tag :note
-                  '(
-                    (tag :to "Tove")
-                    (tag :from "Jani" )
-                    (tag :heading "Reminder")
-                    (tag :body "Don't forget me this weekend!")
-                    )
-                  ))
+(defn zip
+  [a b]
+  (map vector a b))
 
-(def example (tag :note
-                  [
-                   (tag :to "Tove")
-                   (tag :from "Jani" )
-                   (tag :heading "Reminder")
-                   (tag :body "Don't forget me this weekend!")
-                   ]
-                  ))
+(defn validate
+  [tree schema]
+  (if (empty? schema)
+    (empty? tree)
+    (apply (first schema) [tree (rest schema)])))
+
+(defn tagg
+  [tree schema]
+  (and (= (first tree) (first schema))
+       (validate (rest tree) (second schema))))
+
+(defn sequencee
+  [tree schema]
+  (every? true? (map
+                  (partial apply validate)
+                  (zip tree schema))))
+
+(defn stringg
+  [tree schema]
+  (string? (first tree)))
+
+(defn numberr
+  [tree schema]
+  (number? (first tree)))
+
+(defn xmlsequence
+  [tree schema]
+  (every? true? (map
+                  (fn [node]
+                    (some true? (map
+                                  (partial validate node)
+                                  schema)))
+                  tree)))
 
 ;Пример схемы
-(def example-scheme '(::tag :note
-                       (::sequence
-                         (
-                          (::tag :to ::string)
-                          (::tag :from ::string )
-                          (::tag :heading ::string)
-                          (::tag :body ::string)
-                          )
-                         )
-                       ))
+(def example-scheme
+  [tagg "note"
+   [sequencee
+    [tagg "to" [stringg]]
+    [tagg "from" [stringg]]
+    [tagg "heading" [stringg]]
+    [tagg "body" [stringg]]
+   ]
+  ])
+
+;Пример с-выражения
+(def example
+  ["note"
+   ["to" "Tove"]
+   ["from" "Jani"]
+   ["heading" "Reminder"]
+   ["body" "Don't forget me this weekend!"]
+  ])
+
+(println (sequencee
+           [
+            ["to" "Tove"]
+            ["from" 123]
+            ["heading" "Reminder"]
+           ]
+           [
+            [tagg "to" [stringg]]
+            [tagg "from" [numberr]]
+            [tagg "heading" [stringg]]
+           ]))
+
+(println (validate
+           ["note"
+            ["to" "Tove"]
+            ["from" "Jani"]
+            ["heading" "Reminder"]
+           ]
+           [tagg "note"
+            [sequencee
+             [tagg "to" [stringg]]
+             [tagg "from" [stringg]]
+             [tagg "heading" [stringg]]
+            ]
+           ]))
+
+(println (validate
+           ["note"
+            ["to" "Tove"]
+            ["to" "Tove"]
+            ["heading" "Reminder"]
+           ]
+           [tagg "note"
+            [xmlsequence
+             [tagg "to" [stringg]]
+             [tagg "from" [stringg]]
+             [tagg "heading" [stringg]]
+            ]
+           ]))
+
+
+(println (validate ["note" "heh"] [tagg "note" [stringg]]))

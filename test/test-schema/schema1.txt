@@ -1,7 +1,8 @@
-(tag
-    (nm :note)
-    (sequence
-        ((tag (nm :to) string)
-         (tag (nm :from) string)
-         (tag (nm :heading) string)
-         (tag (nm :body) string))))
+[tagg "note"
+                      [sequencee
+                       [tagg "to" [stringg]]
+                       [tagg "from" [stringg]]
+                       [tagg "heading" [stringg]]
+                       [tagg "body" [stringg]]
+                       ]
+                      ]
