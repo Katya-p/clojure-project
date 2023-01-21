@@ -1,48 +1,100 @@
 (ns clojure-project.scheme-check
   (:import [java.io PushbackReader])
   (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]
-            [clojure-project.core :refer :all]))
+            [clojure.edn :as edn]))
 
+; Utils
+(defn get-expr-type [expr]
+  (if (seq? expr) (first expr) ::value))
 
+(defn legal-expr? [expr expr-type]
+  (= expr-type (get-expr-type expr)))
 
-;(declare is-value)
-;
-;(defn check-correctness
-;  [expr]
-;  (if (and (seq? expr) (= 3 (count expr)))
-;    true
-;    false))
-;
-;(defn is-value
-;  [data]
-;  (if (or (string? data) (number? data))
-;    true
-;    (check-correctness data)))
+(defn expr-value [expr expr-type]
+  (if (legal-expr? expr expr-type)
+    (second expr)
+    (throw (IllegalArgumentException. "Bad type"))))
 
-;читаем данные из файла
-(defn read-forms
-  [file]
-  (let [rdr (-> file io/file io/reader PushbackReader.)
-        sentinel (Object.)]
-    (loop [forms []]
-      (let [form (edn/read {:eof sentinel} rdr)]
-        (if (= sentinel form)
-          forms
-          (recur (conj forms form)))))))
+(defn args [expr]
+  (rest expr))
 
-(defn read-sdata
-  [path]
-  (let [data-seq (try
-                   (read-forms path)
-                   (catch Exception e (list))
-                   (finally))]
-    (first data-seq)))
+; Primitives
+(defn nm [value]
+  (list ::name value))
 
-(defn -main []
-  (let [path-to-file1 "test/test-data/data1.txt"]
-    (println (read-sdata path-to-file1))))
+(defn tag [name & values]
+  (concat (list ::tag name) values))
 
+; Document to string
+(defmulti to-str (fn [expr] (get-expr-type expr)))
+(defmethod to-str ::value [expr] (str expr))
+(defmethod to-str ::name [expr] (str (expr-value expr ::name)))
+(defmethod to-str ::tag [expr] (reduce (fn [acc val] (str acc " " (to-str val))) "" (args expr)))
+
+; Expression example
+(tag (nm :note)
+     (tag (nm :to) "Tove ")
+     (tag (nm :from) "Jani")
+     (tag (nm :heading) "Reminder")
+     (tag (nm :body) "Don't forget me this weekend!"))
+
+; To str example
+(to-str (tag (nm :note)
+             (tag (nm :to) "Tove ")
+             (tag (nm :from) "Jani")
+             (tag (nm :heading) "Reminder")
+             (tag (nm :body) "Don't forget me this weekend!")))
+; Path
+(defn path [& values]
+  values)
+
+(defn tag-content [expr]
+  (if (legal-expr? expr ::tag)
+    (rest (rest expr))
+    (throw (IllegalArgumentException. "Bad type"))))
+
+(defn tag-name [expr]
+  (if (legal-expr? expr ::tag)
+    (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name)
+    ""))
+
+; Check if expression satisfies node
+; The node is the element of the path
+(defmulti apply-node (fn [expr node] node))
+(defmethod apply-node :* [expr node] (legal-expr? expr ::tag))
+(defmethod apply-node :default  [expr node] (= node (tag-name expr)))
+
+; Get the content of the document that satisfies path
+(defn apply-path [expr path]
+  (if (legal-expr? expr ::tag)
+    (reduce
+      (fn [acc node]
+        (reduce (fn [acc val] (concat acc (tag-content val)))
+                (list)
+                (filter (fn [elem] (apply-node elem node)) acc)))
+      (list expr)
+      path)
+    (throw (IllegalArgumentException. "Bad expression"))))
+
+(apply-path
+  (tag (nm :html) (tag (nm :body)
+                       (tag (nm :div) "First layer"
+                            (tag (nm :span) "Text in first layer"))
+                       (tag (nm :div) "Second layer")
+                       (tag (nm :div) "Third layer"
+                            (tag (nm :span) "Text 1 in third layer")
+                            (tag (nm :span) "Text 2 in third layer")
+                            (tag (nm :span) "Text 3 in third layer"))
+                       (tag (nm :div) "Fourth layer")))
+  (path :html :body :div :*)
+  )
+
+;ok
+(path :html :body)
+(path :html :body :div)
+(path :html :body :div :span)
+
+;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn zip
@@ -53,15 +105,18 @@
   [tree schema]
   (if (empty? schema)
     (empty? tree)
-    (apply (first schema) [tree (rest schema)])))
+    (apply
+      (first schema)
+      [tree (rest schema)])))
 
 (defn tagg
   [tree schema]
-  (and (= (first tree) (first schema))
-       (validate (rest tree) (second schema))))
+  (and
+    (= (first tree) ::tag)
+    (= (second tree) (nm (first schema)))
+    (validate (rest (rest tree)) (second schema))))
 
 (defn sequencee
-  "Эта последовательность дает возможность проверять данные строго по схеме"
   [tree schema]
   (every? true? (map
                   (partial apply validate)
@@ -71,123 +126,42 @@
   [tree schema]
   (string? (first tree)))
 
-(defn numberr
-  [tree schema]
-  (number? (first tree)))
-
 (defn xmlsequence
-  "Эта последовательность дает возможность проверять данные по схеме,
-  несмотря на количество повторений или порядок внутренних тегов"
   [tree schema]
-  (every? true? (map
-                  (fn [node]
-                    (some true? (map
-                                  (partial validate node)
-                                  schema)))
-                  tree)))
+  (every? true?
+          (map
+            (fn [node]
+              (some true? (map
+                            (partial validate node)
+                            schema)))
+            tree)))
 
-;Пример схемы
-(def example-scheme
-  [tagg "note"
-   [sequencee
-    [tagg "to" [stringg]]
-    [tagg "from" [stringg]]
-    [tagg "heading" [stringg]]
-    [tagg "body" [stringg]]
-   ]
-  ])
-
-;Пример с-выражения
-(def example
-  ["note"
-   ["to" "Tove"]
-   ["from" "Jani"]
-   ["heading" "Reminder"]
-   ["body" "Don't forget me this weekend!"]
-  ])
-
-(println (sequencee
-           [
-            ["to" "Tove"]
-            ["from" 123]
-            ["heading" "Reminder"]
-           ]
-           [
-            [tagg "to" [stringg]]
-            [tagg "from" [numberr]]
-            [tagg "heading" [stringg]]
-           ]))
-
-(println (validate
-           ["note"
-            ["to" "Tove"]
-            ["from" "Jani"]
-            ["heading" "Reminder"]
-           ]
-           [tagg "note"
-            [sequencee
-             [tagg "to" [stringg]]
-             [tagg "from" [stringg]]
-             [tagg "heading" [stringg]]
-            ]
-           ]))
-
-(println (validate
-           ["note"
-            ["to" "Tove"]
-            ["to" "Tove"]
-            ["heading" "Reminder"]
-           ]
-           [tagg "note"
-            [xmlsequence
-             [tagg "to" [stringg]]
-             [tagg "from" [stringg]]
-             [tagg "heading" [stringg]]
-            ]
-           ]))
-
-
-(println (validate ["note" "heh"] [tagg "note" [stringg]]))
-
-;Пример
-
-;Пример с-выражения
-(def example1
-  ["name-out"
-   ["id" 1111]
-   ["name-in1" "data1"]
-   ["name-in2" "data2"]
-   ["name-in3" "data3"]
-   ["name-in4" "data4"]
-   ])
-;Пример схемы c нестрогой последовательностью
-(def example-scheme1
-  [tagg "name-out"
+(def tree
+  (tag (nm :html)
+       (tag (nm :body)
+            (tag (nm :div) "First layer"
+                 (tag (nm :span) "Text in first layer"))
+            (tag (nm :div) "Second layer")
+            (tag (nm :div) "Third layer"
+                 (tag (nm :span) "Text 1 in third layer")
+                 (tag (nm :span) "Text 2 in third layer")
+                 (tag (nm :span) "Text 3 in third layer"))
+            (tag (nm :div) "Fourth layer")
+            ))
+  )
+(def schema
+  [tagg :html
    [xmlsequence
-    [tagg "id" [numberr]]
-    [tagg "name-in1" [stringg]]
-    [tagg "name-in2" [stringg]]
-    [tagg "name-in4" [stringg]]
-    [tagg "name-in3" [stringg]]
-    ]
-   ])
-
-;Пример схемы cо строгой последовательностью
-(def example-scheme2
-  [tagg "name-out"
-   [sequencee
-    [tagg "id" [numberr]]
-    [tagg "name-in1" [stringg]]
-    [tagg "name-in2" [stringg]]
-    [tagg "name-in4" [stringg]]
-    [tagg "name-in3" [stringg]]
-    ]
-   ])
-
-(validate example1 example-scheme1)                         ;; true
-(validate example1 example-scheme2)                         ;; false
+    [tagg :body
+     [xmlsequence
+      [tagg :div [stringg]]
+      [tagg :div
+       [xmlsequence
+        [tagg :span [stringg]]]]]]]])
 
 
-(defn create-tree
-  [parent child]
-  [(name parent) (name child)])
+(println (validate tree schema))
+
+
+
+
