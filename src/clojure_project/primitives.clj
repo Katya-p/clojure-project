@@ -62,8 +62,9 @@
 (defmethod apply-node :idx [expr node] (nth expr node))
 (defmethod apply-node :default  [expr node] (get-node-content expr node))
 
-; Get the content of the document that satisfies path
-(defn apply-path [expr path]
+(defn apply-path
+  "Функция возвращает содержимое документа, удовлетворяющее пути"
+  [expr path]
   (if (legal-expr? expr ::tag)
     (reduce
       (fn [acc node]
@@ -71,3 +72,15 @@
       (list expr)
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
+
+(defn add-string [s expr]
+  (if (not (legal-expr? expr ::value))
+    expr
+    (str expr s)))
+
+(defn modify-doc
+  [expr path func func-arg]
+  (if (not (legal-expr? expr ::tag))
+    (throw (IllegalArgumentException. "Bad expression"))
+    (map (partial func func-arg) (apply-path expr path))
+   ))
