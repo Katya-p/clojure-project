@@ -1,4 +1,5 @@
 (ns clojure-project.primitives)
+(use '[clojure.string :only (replace-first)])
 
 ; Utils
 (defn get-expr-type
@@ -63,9 +64,10 @@
   (if (legal-expr? expr ::tag)
     (reduce
       (fn [acc node]
-        (reduce (fn [acc val] (concat acc (tag-content val)))
-                (list)
-                (filter (fn [elem] (apply-node elem node)) acc)))
+        (mapcat tag-content (filter (fn [elem] (apply-node elem node)) acc)))
+      ;    (reduce (fn [acc val] (concat acc (tag-content val)))
+      ;      (list)
+      ;      (filter (fn [elem] (apply-node elem node)) acc)))
       (list expr)
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
@@ -73,60 +75,35 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def data
-  (tag (nm :data)
-       (tag (nm :artist)
-            (tag (nm :name) "Death")
-            (tag (nm :genre) "DeathMetal")
-            (tag (nm :song) "Bite the Pain"))
-       (tag (nm :artist)
-            (tag (nm :name) "Kiss")
-            (tag (nm :genre) "HardRock")
-            (tag (nm :song) "Strutter"))
-       (tag (nm :artist)
-            (tag (nm :name) "Red Hot Chili Peppers")
-            (tag (nm :genre) "FunkRock")
-            (tag (nm :song) "Under the Bridge"))
-       (tag (nm :pic) "PIC")
-       )
-  )
-
-(def template
-  (tag
-    (nm :html)
-    (tag (nm :body)
-         (tag (nm :div) "First layer"
-              (tag (nm :span) "Text in first layer"))
-         (tag (nm :div) "Second layer")
-         (tag (nm :li)
-              (tag (nm :select) (path :data :artist)
-                   (tag (nm :ul)
-                        (tag (nm :valueof) (path :genre)))))
-         (tag (nm :img)
-              (tag (nm :valueof) (path :data :pic)))
-         (tag (nm :div) "Fourth layer"))))
-
+(defn apply-path-wrapper
+  [expr path]
+  (filter (fn [elem] (apply-node elem (last path)))
+          (apply-path expr (drop-last path))))
 
 (defn apply-template-helper
   [data template]
   (if (= (get-expr-type template) ::value)
     (list template)
     (if (= (tag-name template) :valueof)
-      (list (first (apply-path  data (first (tag-content template)))))
+      (list (first (apply-path data (first (tag-content template)))))
       (if (= (tag-name template) :select)
         (map first
              (map (fn [inner]
                     (apply-template-helper inner (second (tag-content template))))
-                  (apply-path data (first (tag-content template)))))
+                  (apply-path-wrapper data (first (tag-content template)))))
         (list (apply tag
-                     (cons (tag-name template)
+                     (cons (nm (tag-name template))
                            (mapcat (partial apply-template-helper data)
                                    (tag-content template)))))))))
 
 (defn apply-template
   [data template]
   (first (apply-template-helper data template)))
-(println (tag-content data))
-(println (apply-template data template))
-(println (apply-path data (path :data :artist)))
+
+(defn trim-tag-name [expr] (replace-first (tag-name expr) #":" ""))
+
+(defmulti to-xml (fn [expr] (get-expr-type expr)))
+(defmethod to-xml ::value [expr] (str expr))
+(defmethod to-xml ::tag [expr] (str "<" (trim-tag-name expr) ">" (apply str (map to-xml (tag-content expr))) "</" (trim-tag-name expr) ">"))
+
 
