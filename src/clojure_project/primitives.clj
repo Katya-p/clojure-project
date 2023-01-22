@@ -73,10 +73,23 @@
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
 
-(defn add-string [s expr]
+(defn add-string
+  "Добавить строку к строке"
+  [s expr]
   (if (not (legal-expr? expr ::value))
     expr
     (str expr s)))
+
+(defn add-string-tag
+  "Добавить строку к содержимому тега, если оно является данными"
+  [s expr]
+  (if (not (legal-expr? expr ::tag))
+    expr
+    (tag (tag-name expr)
+         (map
+           (fn [val] (if (legal-expr? val ::value)
+                       (str val s) val))
+           (tag-content expr)))))
 
 (defn modify-doc
   [expr path func func-arg]
