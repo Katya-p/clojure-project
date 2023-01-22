@@ -47,7 +47,7 @@
 
 (defmulti pred (fn [expr node] (node-type node)))
 (defmethod pred :* [expr node] (legal-expr? expr ::tag))
-(defmethod pred :idx [expr node] false)
+(defmethod pred :idx [expr node] (throw (IllegalArgumentException. "Bad type")))
 (defmethod pred :default  [expr node] (= node (tag-name expr)))
 
 (defn get-node-content [expr-list node]
