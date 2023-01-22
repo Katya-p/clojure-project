@@ -1,33 +1,41 @@
 (ns clojure-project.primitives)
 
 ; Utils
-(defn get-expr-type [expr]
+(defn get-expr-type
+  [expr]
   (if (seq? expr) (first expr) ::value))
 
-(defn legal-expr? [expr expr-type]
+(defn legal-expr?
+  [expr expr-type]
   (= expr-type (get-expr-type expr)))
 
-(defn expr-value [expr expr-type]
+(defn expr-value
+  [expr expr-type]
   (if (legal-expr? expr expr-type)
     (second expr)
     (throw (IllegalArgumentException. "Bad type"))))
 
-(defn args [expr]
+(defn args
+  [expr]
   (rest expr))
 
 ; Primitives
-(defn nm [value]
+(defn nm
+  [value]
   (list ::name value))
 
-(defn tag [name & values]
+(defn tag
+  [name & values]
   (concat (list ::tag name) values))
 
-(defn tag-content [expr]
+(defn tag-content
+  [expr]
   (if (legal-expr? expr ::tag)
     (rest (rest expr))
     (throw (IllegalArgumentException. "Bad type"))))
 
-(defn tag-name [expr]
+(defn tag-name
+  [expr]
   (if (legal-expr? expr ::tag)
     (expr-value (first (filter #(legal-expr? % ::name) expr)) ::name)
     ""))
@@ -39,7 +47,8 @@
 (defmethod to-str ::tag [expr] (reduce (fn [acc val] (str acc " " (to-str val))) "" (args expr)))
 
 ; Path
-(defn path [& values]
+(defn path
+  [& values]
   values)
 
 ; Check if expression satisfies node
@@ -49,7 +58,8 @@
 (defmethod apply-node :default  [expr node] (= node (tag-name expr)))
 
 ; Get the content of the document that satisfies path
-(defn apply-path [expr path]
+(defn apply-path
+  [expr path]
   (if (legal-expr? expr ::tag)
     (reduce
       (fn [acc node]
