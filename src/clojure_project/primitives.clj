@@ -1,4 +1,5 @@
 (ns clojure-project.primitives)
+(use '[clojure.string :only (replace-first)])
 
 ; Utils
 (defn get-expr-type
@@ -107,3 +108,37 @@
     (throw (IllegalArgumentException. "Bad expression"))
     (map (partial func func-arg) (apply-path expr path))
    ))
+   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn apply-path-wrapper
+  [expr path]
+  (filter (fn [elem] (apply-node elem (last path)))
+          (apply-path expr (drop-last path))))
+
+(defn apply-template-helper
+  [data template]
+  (if (= (get-expr-type template) ::value)
+    (list template)
+    (if (= (tag-name template) :valueof)
+      (list (first (apply-path data (first (tag-content template)))))
+      (if (= (tag-name template) :select)
+        (map first
+             (map (fn [inner]
+                    (apply-template-helper inner (second (tag-content template))))
+                  (apply-path-wrapper data (first (tag-content template)))))
+        (list (apply tag
+                     (cons (nm (tag-name template))
+                           (mapcat (partial apply-template-helper data)
+                                   (tag-content template)))))))))
+
+(defn apply-template
+  [data template]
+  (first (apply-template-helper data template)))
+
+(defn trim-tag-name [expr] (replace-first (tag-name expr) #":" ""))
+
+(defmulti to-xml (fn [expr] (get-expr-type expr)))
+(defmethod to-xml ::value [expr] (str expr))
+(defmethod to-xml ::tag [expr] (str "<" (trim-tag-name expr) ">" (apply str (map to-xml (tag-content expr))) "</" (trim-tag-name expr) ">"))
+

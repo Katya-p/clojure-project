@@ -74,3 +74,39 @@
 
 
 (println (validate tree schema))
+
+(def data
+  (tag (nm :data)
+       (tag (nm :artist) (tag (nm :name) "Death") (tag (nm :genre) "DeathMetal") (tag (nm :song) "Bite the Pain"))
+       (tag (nm :artist) (tag (nm :name) "Kiss") (tag (nm :genre) "HardRock") (tag (nm :song) "Strutter"))
+       (tag (nm :artist) (tag (nm :name) "Red Hot Chili Peppers") (tag (nm :genre) "FunkRock") (tag (nm :song) "Under the Bridge"))
+       (tag (nm :pic) "PIC")
+       )
+  )
+
+(def template
+  (tag
+    (nm :html)
+    (tag (nm :body)
+         (tag (nm :div) "First layer"
+              (tag (nm :span) "Text in first layer"))
+         (tag (nm :div) "Second layer")
+         (tag (nm :ul)
+              (tag (nm :select) (path :data :artist) (tag (nm :li) (tag (nm :valueof) (path :artist :genre))))
+              )
+         (tag (nm :img) (tag (nm :valueof) (path :data :pic)))
+         (tag (nm :div) "Fourth layer")
+         )))
+
+;(println (tag-content data))
+;(println (apply-template data template))
+;(println (apply-path data (path :data :artist)))
+
+
+;(println (tag-content data))
+;(println data)
+;(println (apply-template data template))
+;(println (apply-path-wrapper data (path :data :artist)))
+
+;(println (tag-name data))
+;(println (to-xml (apply-template data template)))
