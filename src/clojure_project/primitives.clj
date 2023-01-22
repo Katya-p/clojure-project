@@ -70,3 +70,63 @@
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def data
+  (tag (nm :data)
+       (tag (nm :artist)
+            (tag (nm :name) "Death")
+            (tag (nm :genre) "DeathMetal")
+            (tag (nm :song) "Bite the Pain"))
+       (tag (nm :artist)
+            (tag (nm :name) "Kiss")
+            (tag (nm :genre) "HardRock")
+            (tag (nm :song) "Strutter"))
+       (tag (nm :artist)
+            (tag (nm :name) "Red Hot Chili Peppers")
+            (tag (nm :genre) "FunkRock")
+            (tag (nm :song) "Under the Bridge"))
+       (tag (nm :pic) "PIC")
+       )
+  )
+
+(def template
+  (tag
+    (nm :html)
+    (tag (nm :body)
+         (tag (nm :div) "First layer"
+              (tag (nm :span) "Text in first layer"))
+         (tag (nm :div) "Second layer")
+         (tag (nm :li)
+              (tag (nm :select) (path :data :artist)
+                   (tag (nm :ul)
+                        (tag (nm :valueof) (path :genre)))))
+         (tag (nm :img)
+              (tag (nm :valueof) (path :data :pic)))
+         (tag (nm :div) "Fourth layer"))))
+
+
+(defn apply-template-helper
+  [data template]
+  (if (= (get-expr-type template) ::value)
+    (list template)
+    (if (= (tag-name template) :valueof)
+      (list (first (apply-path  data (first (tag-content template)))))
+      (if (= (tag-name template) :select)
+        (map first
+             (map (fn [inner]
+                    (apply-template-helper inner (second (tag-content template))))
+                  (apply-path data (first (tag-content template)))))
+        (list (apply tag
+                     (cons (tag-name template)
+                           (mapcat (partial apply-template-helper data)
+                                   (tag-content template)))))))))
+
+(defn apply-template
+  [data template]
+  (first (apply-template-helper data template)))
+(println (tag-content data))
+(println (apply-template data template))
+(println (apply-path data (path :data :artist)))
+

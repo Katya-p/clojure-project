@@ -1,6 +1,7 @@
 (ns clojure-project.core
   [:require [clojure-project.primitives :refer :all]
-            [clojure-project.scheme-check :refer :all]])
+            [clojure-project.scheme-check :refer :all]
+            [clojure-project.html-converter :refer :all]])
 
 ; Expression example
 (tag (nm :note)
