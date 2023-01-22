@@ -42,21 +42,32 @@
 (defn path [& values]
   values)
 
-; Check if expression satisfies node
-; The node is the element of the path
-(defmulti apply-node (fn [expr node] node))
-(defmethod apply-node :* [expr node] (legal-expr? expr ::tag))
-(defmethod apply-node :default  [expr node] (= node (tag-name expr)))
+(defn node-type [node]
+  (if (number? node) :idx node))
+
+(defmulti pred (fn [expr node] (node-type node)))
+(defmethod pred :* [expr node] (legal-expr? expr ::tag))
+(defmethod pred :idx [expr node] false)
+(defmethod pred :default  [expr node] (= node (tag-name expr)))
+
+(defn get-node-content [expr-list node]
+  (if (= (node-type node) :idx)
+    (throw (IllegalArgumentException. "Bad type"))
+    (reduce (fn [acc val] (concat acc (tag-content val)))
+            (list)
+            (filter (fn [elem] (pred elem node)) expr-list))))
+
+(defmulti apply-node (fn [expr node] (node-type node)))
+(defmethod apply-node :* [expr node] (get-node-content expr node))
+(defmethod apply-node :idx [expr node] (nth expr node))
+(defmethod apply-node :default  [expr node] (get-node-content expr node))
 
 ; Get the content of the document that satisfies path
 (defn apply-path [expr path]
   (if (legal-expr? expr ::tag)
     (reduce
       (fn [acc node]
-        (reduce (fn [acc val] (concat acc (tag-content val)))
-                (list)
-                (filter (fn [elem] (apply-node elem node)) acc)))
+        (apply-node acc node))
       (list expr)
       path)
     (throw (IllegalArgumentException. "Bad expression"))))
-

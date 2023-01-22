@@ -27,7 +27,7 @@
                             (tag (nm :span) "Text 2 in third layer")
                             (tag (nm :span) "Text 3 in third layer"))
                        (tag (nm :div) "Fourth layer")))
-  (path :html :body :div :*)
+  (path :html :body :div :* 0)
   )
 
 ;ok
