@@ -27,8 +27,21 @@
                             (tag (nm :span) "Text 2 in third layer")
                             (tag (nm :span) "Text 3 in third layer"))
                        (tag (nm :div) "Fourth layer")))
-  (path :html :body :div :*)
+  (path :html :body :div :* 0)
   )
+
+(apply-path
+  (tag (nm :html) (tag (nm :body)
+                       (tag (nm :div) "First layer"
+                            (tag (nm :span) "Text in first layer"))
+                       (tag (nm :div) "Second layer")
+                       (tag (nm :div) "Third layer"
+                            (tag (nm :span) "Text 1 in third layer")
+                            (tag (nm :span) "Text 2 in third layer")
+                            (tag (nm :span) "Text 3 in third layer"))
+                       (tag (nm :div) "Fourth layer")))
+  (path :html :body 0 :span)
+)
 
 ;ok
 (path :html :body)
